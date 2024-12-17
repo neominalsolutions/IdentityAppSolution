@@ -1,6 +1,10 @@
 ﻿using IdentityAPI.Dtos;
+using IdentityAPI.Filters;
 using IdentityAPI.Identity.Models;
 using IdentityAPI.Requests;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.Data;
@@ -23,6 +27,7 @@ namespace IdentityAPI.Controllers
     }
 
     [HttpPost]
+    [Authorize(AuthenticationSchemes = "TGSJWTBearer")]
     public async Task<IActionResult> CreateUser([FromBody] UserRegisterRequest registerRequest)
     {
 
@@ -64,9 +69,17 @@ namespace IdentityAPI.Controllers
     }
 
     [HttpPost("findClaims")]
+    //[Authorize(Roles = "SuperVisor")]
+    //[PermissionFilter("User","Create")]
+    [Authorize(Policy = "UserPermissionByAdmin")]
     public async Task<IActionResult> FindUserRoleClaims([FromBody] UserFindRequest request)
     {
-      var user = await userManager.FindByEmailAsync(request.Email);
+
+      //await HttpContext.AuthenticateAsync();
+      string userId = HttpContext.User.GetLoggedInUserId();
+
+
+           var user = await userManager.FindByEmailAsync(request.Email);
       ArgumentNullException.ThrowIfNull(user);
 
       List<ClaimDto> claims = []; // C# 12 sonrası
