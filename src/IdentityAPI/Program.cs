@@ -4,11 +4,15 @@ using IdentityAPI.Identity.Models;
 using IdentityAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.ResponseCaching;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using System.Text;
@@ -17,7 +21,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+
+
+builder.Services.AddControllers(opt =>
+{
+  opt.CacheProfiles.Add("CacheProfile1", new CacheProfile { Duration = 30 });
+  opt.CacheProfiles.Add("CacheProfile2", new CacheProfile { Duration = 60 });
+  opt.CacheProfiles.Add("CacheProfile3", new CacheProfile { Duration = 90 });
+});
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 
@@ -73,6 +84,28 @@ builder.Services.AddScoped<IAccessTokenService, JwtTokenService>();
 
 var key = Encoding.ASCII.GetBytes(JWTSettings.SecretKey);
 
+// response Compression feature gzip olarak sýkýþtýrma iþlemi
+builder.Services.AddResponseCompression(options =>
+{
+  options.EnableForHttps = true;
+  options.Providers.Add<BrotliCompressionProvider>();
+  options.Providers.Add<GzipCompressionProvider>();
+});
+
+builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
+{
+  options.Level = CompressionLevel.Fastest;
+});
+
+builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+{
+  options.Level = CompressionLevel.SmallestSize;
+});
+
+// Not: Response Caching yaparken dikkat edilmesi gerekenler.
+// Status Code 200 dönmeli HTTP GET olmalý ve Authorize attribute ilgili action için tanýmlanmamýþ olmalýdýr.
+
+builder.Services.AddResponseCaching();
 
 
 
@@ -124,6 +157,9 @@ builder.Services.AddAuthentication(x =>
 
 //  ClaimTypes.Role => Role kullanýrken buna dikkat.
 
+
+
+
 builder.Services.AddAuthorization(opt =>
 {
   opt.AddPolicy("UserPermissionByAdmin", policy =>
@@ -139,6 +175,7 @@ builder.Services.AddAuthorization(opt =>
     policy.RequireRole("manager");
     policy.RequireClaim("User", "Insert", "Update");
   });
+
 });
 
 
@@ -151,8 +188,17 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+
 app.UseAuthentication();
 app.UseAuthorization();
+
+
+// ResponseCompress et
+app.UseResponseCompression();
+// Response Cache
+app.UseResponseCaching();
+
 
 app.MapControllers();
 

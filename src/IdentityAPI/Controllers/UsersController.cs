@@ -68,18 +68,21 @@ namespace IdentityAPI.Controllers
       return Ok();
     }
 
-    [HttpPost("findClaims")]
+    [HttpGet("findClaims/{email}")]
     //[Authorize(Roles = "SuperVisor")]
     //[PermissionFilter("User","Create")]
-    [Authorize(Policy = "UserPermissionByAdmin")]
-    public async Task<IActionResult> FindUserRoleClaims([FromBody] UserFindRequest request)
+    // [Authorize(Policy = "UserPermissionByAdmin")]
+    // User-Agent göre aynı tarayıcıdan gelirse cache yapar.
+    //[ResponseCache(VaryByHeader = "User-Agent", Duration = 30)]
+    [ResponseCache(VaryByHeader = "User-Agent", CacheProfileName = "CacheProfile3")]
+    public async Task<IActionResult> FindUserRoleClaims(string email)
     {
 
       //await HttpContext.AuthenticateAsync();
-      string userId = HttpContext.User.GetLoggedInUserId();
+      // string userId = HttpContext.User.GetLoggedInUserId();
 
 
-           var user = await userManager.FindByEmailAsync(request.Email);
+           var user = await userManager.FindByEmailAsync(email);
       ArgumentNullException.ThrowIfNull(user);
 
       List<ClaimDto> claims = []; // C# 12 sonrası
