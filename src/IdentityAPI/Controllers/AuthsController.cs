@@ -4,6 +4,7 @@ using IdentityAPI.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
 namespace IdentityAPI.Controllers
@@ -21,6 +22,8 @@ namespace IdentityAPI.Controllers
 
 
     [HttpPost("token")]
+    //[EnableRateLimiting("findUsers")]
+    //[DisableRateLimiting]
     public async Task<IActionResult> CreateTokenAsync([FromBody] TokenRequestDto tokenRequest)
     {
 

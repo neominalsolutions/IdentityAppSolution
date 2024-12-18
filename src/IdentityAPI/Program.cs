@@ -5,6 +5,7 @@ using IdentityAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCaching;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,7 @@ using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -64,6 +66,32 @@ builder.Services.AddSwaggerGen(opt =>
   opt.AddSecurityRequirement(securityRequirement);
 });
 
+
+// Rate Limitter Window Period kadar eþ zamanlý bir þekilde gelen isteklerin limitlenmesi
+
+builder.Services.AddRateLimiter(opt =>
+{
+opt.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+  opt.OnRejected = async (context, token) =>
+  {
+    Console.Out.WriteLine("Rejected", context);
+   await Task.FromResult<OnRejectedContext>(context);
+  };
+
+  opt.AddFixedWindowLimiter(policyName: "fixed", options =>
+      {
+        options.PermitLimit = 4;
+        options.Window = TimeSpan.FromSeconds(12);
+       
+      });
+
+  opt.AddFixedWindowLimiter(policyName: "findUsers", options =>
+  {
+    options.PermitLimit = 5;
+    options.Window = TimeSpan.FromSeconds(10);
+  });
+
+});
 
 
 builder.Services.AddDbContext<AppIdentityDbContext>(opt => opt.UseSqlServer(builder.Configuration.GetConnectionString("IdentityDbConn")));
@@ -199,7 +227,9 @@ app.UseResponseCompression();
 // Response Cache
 app.UseResponseCaching();
 
-
+app.UseRateLimiter();
 app.MapControllers();
+
+
 
 app.Run();
